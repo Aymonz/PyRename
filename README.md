@@ -17,9 +17,11 @@ currently there are only 3 cases for preserving case while replacing:
 # Example Usage:
 at the begining of the script set the following variables
 
-walk_dir = 'Myprojects\golf_proj'  # relative path to the script
-oldtxt = 'golf'                    # old text to replace
-newtxt = 'skoda'                   # new text
+walk_dir = 'Myprojects\golf_proj'  # relative path to the script.
+
+oldtxt = 'golf'                    # old text to replace.
+
+newtxt = 'skoda'                   # new text.
 
 cfg_extensions = ['.c', '.cpp', '.h', '.hpp', '.txt', '.mk'] # extensions for files for which content will be changed
 
