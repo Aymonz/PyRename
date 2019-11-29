@@ -1,19 +1,22 @@
 import os
 import sys
+from typing import List, Tuple
 
-walk_dir = 'vayu'
-oldtxt = 'golf'
-newtxt = 'skoda'
+################################# CFG #####################################
+walk_dir = '../../autosim'
 
-cfg_extensions = \
-    [
+SyllablesMap = [('auto','drive'), ('sim','sim')]
+
+cfg_extensions = []
+'''     [
         '.c', '.cpp', '.h', '.hpp', '.txt', '.mk',
         '.cmakelists', '.cmake', '.cmd', '.bat',
         '.ini', '.xml', '.py', '.project', '.cproject'
-    ]
+    ] '''
 
+verbose = False
 
-
+############################# Helper Funcs ################################
 
 def TextReplace(oldsubstr: str, newsubstr: str, superstr: str, case_opts='PRESERVE') -> str:
 
@@ -38,32 +41,94 @@ def TextReplace(oldsubstr: str, newsubstr: str, superstr: str, case_opts='PRESER
             idx = index_l + len(newsubstr)
     return superstr
 
+def InferNewTxtFromOldTxt(oldstr: str, SyllablesMap: List[Tuple[str,str]]) -> str:
+    outstr = oldstr
+    for t in SyllablesMap:
+        oldsyll = t[0]
+        newsyll = t[1]
+        outstr = TextReplace(oldsyll, newsyll, outstr)
+    return outstr
 
+def RenameIntext(oldsubstr: str, superstr: str, SyllablesMap: List[Tuple[str,str]]) -> str:
+    idx = 0
+    while idx < len(superstr):
+        index_l = superstr.casefold().find(oldsubstr.casefold(), idx)
+        
+        if index_l == -1:
+            return superstr
 
+        newsubstr = InferNewTxtFromOldTxt(superstr[index_l:(index_l+len(oldsubstr))], SyllablesMap)
+
+        superstr = superstr[:index_l] + newsubstr + superstr[index_l + len(oldsubstr):]
+
+        idx = index_l + len(newsubstr)
+
+    return superstr
+
+################################# MAIN ####################################
+
+OldTxt = ''
+NewTxt = ''
+for t in SyllablesMap:
+    OldTxt = OldTxt+t[0]
+    NewTxt = NewTxt+t[1]
 
 
 for root, subdirs, files in os.walk(walk_dir, False):
-    print('--\n' + root)
+    if verbose: print('--\n' + root)
 
     for subdir in subdirs:
-        print('  - ' + subdir)
-        if oldtxt.casefold() in subdir.casefold():
-            os.rename(os.path.join(root, subdir), os.path.join(root, TextReplace(oldtxt,newtxt,subdir)))
+        if verbose: print('  - ' + subdir)
+
+        abspath = os.path.abspath(os.path.join(root, subdir))
+
+        if os.path.islink(abspath):
+            oldTarget = os.readlink(abspath)
+            newTarget = RenameIntext(OldTxt, oldTarget, SyllablesMap)
+            if (newTarget != oldTarget):
+                os.unlink(abspath)
+                os.symlink(newTarget, abspath)
+                print('Changed Directory Symlink at: ' + abspath + ' Target ' + oldTarget + ' -> ' + newTarget)
+
+        if OldTxt.casefold() in subdir.casefold():
+            os.chmod(abspath, 0o777)
+            newName = RenameIntext(OldTxt, subdir, SyllablesMap)
+            os.rename(os.path.join(root, subdir), os.path.join(root, newName))
+            print('renamed Directory at: ' + abspath + ' Name ' + subdir + ' -> ' + newName)
 
     for file in files:
-        print('  - ' + file)
+        if verbose: print('  - ' + file)
 
-        if os.path.splitext(file.lower())[1] in cfg_extensions:
-            with open(os.path.abspath(os.path.join(root, file)), 'r') as f:
+        abspath = os.path.abspath(os.path.join(root, file))
+
+        if os.path.islink(abspath):
+            oldTarget = os.readlink(abspath)
+            newTarget = RenameIntext(OldTxt, oldTarget, SyllablesMap)
+            if (newTarget != oldTarget):
+                os.unlink(abspath)
+                os.symlink(newTarget, abspath)
+                print('Changed File Symlink at: ' + abspath + ' Target ' + oldTarget + ' -> ' + newTarget)
+            
+
+        elif (os.path.splitext(file.lower())[1] in cfg_extensions) or (len(cfg_extensions)==0):
+            os.chmod(abspath, 0o777)
+            oldcontent=''
+            newcontent=''
+            with open(abspath, 'r') as f:
                 try:
                     oldcontent = f.read()
+                    newcontent = RenameIntext(OldTxt, oldcontent, SyllablesMap)
                 except:
-                    print('failed file read at' + os.path.join(root, file))
-                newcontent = TextReplace(oldtxt,newtxt,oldcontent)
+                    if verbose: print('failed file read at ' + os.path.join(root, file))
 
             if (newcontent != oldcontent):
-                with open(os.path.abspath(os.path.join(root, file)), 'w') as f:
+                with open(abspath, 'w') as f:
                     f.write(newcontent)
+                    print('Changed Content of File: ' + abspath)
 
-        if oldtxt.casefold() in file.casefold():
-            os.rename(os.path.join(root, file), os.path.join(root, TextReplace(oldtxt,newtxt,file)))
+        if OldTxt.casefold() in file.casefold():
+            newName = RenameIntext(OldTxt, file, SyllablesMap)
+            os.rename(os.path.join(root, file), os.path.join(root, newName))
+            print('renamed File at: ' + abspath + ' Name ' + file + ' -> ' + newName)
+
+print('Normal termination ... Please check results!')
