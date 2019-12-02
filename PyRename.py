@@ -3,7 +3,7 @@ import sys
 from typing import List, Tuple
 
 ################################# CFG #####################################
-walk_dir = '../../autosim'
+walk_dir = '../../p4/autosim'
 
 SyllablesMap = [('auto','drive'), ('sim','sim')]
 
@@ -91,7 +91,8 @@ for root, subdirs, files in os.walk(walk_dir, False):
                 print('Changed Directory Symlink at: ' + abspath + ' Target ' + oldTarget + ' -> ' + newTarget)
 
         if OldTxt.casefold() in subdir.casefold():
-            os.chmod(abspath, 0o777)
+            st = os.stat(abspath)
+            os.chmod(abspath, st.st_mode | 0o666)
             newName = RenameIntext(OldTxt, subdir, SyllablesMap)
             os.rename(os.path.join(root, subdir), os.path.join(root, newName))
             print('renamed Directory at: ' + abspath + ' Name ' + subdir + ' -> ' + newName)
@@ -111,7 +112,8 @@ for root, subdirs, files in os.walk(walk_dir, False):
             
 
         elif (os.path.splitext(file.lower())[1] in cfg_extensions) or (len(cfg_extensions)==0):
-            os.chmod(abspath, 0o777)
+            st = os.stat(abspath)
+            os.chmod(abspath, st.st_mode | 0o666)
             oldcontent=''
             newcontent=''
             with open(abspath, 'r') as f:
